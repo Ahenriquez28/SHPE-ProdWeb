@@ -1,0 +1,43 @@
+services:
+  # Postgres database
+  # Runs locally in Docker so no one needs to install Postgres manually
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: shpe_dev
+    ports:
+      # Expose port 5432 so we can connect from the API and from psql
+      - "5432:5432"
+    volumes:
+      # Persist data between docker compose down/up cycles
+      - postgres_data:/var/lib/postgresql/data
+
+  # .NET API
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # Tell .NET we're in development mode
+      ASPNETCORE_ENVIRONMENT: Development
+      # Override the connection string to point to the postgres service above
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=shpe_dev;Username=postgres;Password=postgres
+    ports:
+      # API available at localhost:5000
+      - "5001:8080"
+    depends_on:
+      # Don't start the API until Postgres is running
+      - postgres
+    volumes:
+      # Mount source code for hot reload with dotnet watch
+      - ./apps/api:/app
+    working_dir: /app
+    command: dotnet watch run --no-launch-profile
+
+volumes:
+  # Named volume so Postgres data survives container restarts
+  postgres_data:

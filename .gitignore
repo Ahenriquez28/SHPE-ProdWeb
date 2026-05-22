@@ -1,0 +1,33 @@
+# ── .NET build artifacts ─────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# ── Environment / secrets ────────────────────────────────
+# .env.example IS committed (it has only placeholders, no real secrets)
+.env
+.env.local
+.env.*.local
+
+# ── Node / frontend ──────────────────────────────────────
+node_modules/
+apps/web/dist/
+apps/web/.vite/
+
+# ── macOS ─────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── IDE ──────────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+
+# ── Claude Code local settings (developer-specific permissions) ──────────────
+.claude/settings.local.json
+
+# ── Docker volumes (never accidentally committed) ─────────
+postgres_data/
