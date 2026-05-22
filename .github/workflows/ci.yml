@@ -1,16 +1,8 @@
 # CI pipeline — runs on every PR targeting main and every push to main.
 #
-# JOBS:
-#   api  — build + lint the .NET 10 API
-#   web  — typecheck + lint + build the React frontend (only runs once apps/web exists)
-#
-# REQUIRED TO MERGE (once first PR runs the workflow):
-#   GitHub repo → Settings → Branches → Add ruleset → require "api" status check
-#   Add "web" check after Phase 0.5 (frontend scaffold) is merged.
-#
-# POSTGRES SERVICE:
-#   The api job spins up a Postgres 16 container so integration tests can hit a real DB.
-#   The connection string is injected via env var — same pattern as local Docker Compose.
+# Current coverage: .NET API build only.
+# Tests will be added in Phase 1 once test projects exist.
+# Web job will be added after Phase 0.5 (frontend scaffold).
 
 name: CI
 
@@ -21,25 +13,9 @@ on:
     branches: [main]
 
 jobs:
-  # ─── .NET API ─────────────────────────────────────────────────────────────
   api:
-    name: API — build & test
+    name: API — restore & build
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: shpe_test
-        ports:
-          - "5432:5432"
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -49,71 +25,10 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Restore dependencies
+      - name: Restore
         working-directory: apps/api
         run: dotnet restore
 
       - name: Build
         working-directory: apps/api
         run: dotnet build --no-restore --configuration Release
-
-      # Migrations are applied by the test setup in integration tests.
-      # Unit tests that don't need a DB run without the connection string.
-      - name: Test
-        working-directory: apps/api
-        run: dotnet test --no-build --configuration Release --logger "console;verbosity=normal"
-        env:
-          ConnectionStrings__Postgres: >-
-            Host=localhost;Port=5432;Database=shpe_test;Username=postgres;Password=postgres
-          ASPNETCORE_ENVIRONMENT: Test
-          # Placeholder values — tests that call Clerk or Spaces must mock those services
-          Clerk__Issuer: https://placeholder.clerk.accounts.dev
-          DO_SPACES_KEY: placeholder
-          DO_SPACES_SECRET: placeholder
-          DO_SPACES_BUCKET: shpe-ci-test
-          DO_SPACES_REGION: nyc3
-          BOOTSTRAP_SUPER_ADMIN_EMAIL: ""
-
-  # ─── React frontend ───────────────────────────────────────────────────────
-  # This job only runs once apps/web/package.json exists (Phase 0.5+).
-  # Until then, PRs only need the "api" check to be green.
-  web:
-    name: Web — typecheck, lint & build
-    runs-on: ubuntu-latest
-    # Skip entirely if the frontend hasn't been scaffolded yet
-    if: hashFiles('apps/web/package.json') != ''
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "pnpm"
-          cache-dependency-path: apps/web/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: apps/web
-        run: pnpm install --frozen-lockfile
-
-      - name: Typecheck
-        working-directory: apps/web
-        run: pnpm typecheck
-
-      - name: Lint
-        working-directory: apps/web
-        run: pnpm lint
-
-      - name: Build
-        working-directory: apps/web
-        run: pnpm build
-        env:
-          # Vite needs these at build time; use placeholder values for CI
-          VITE_API_URL: http://localhost:5001/api
-          VITE_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
