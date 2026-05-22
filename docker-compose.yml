@@ -20,6 +20,9 @@ services:
     build:
       context: ./apps/api
       dockerfile: Dockerfile
+      # Use the "base" stage (SDK + dotnet-ef) for local dev.
+      # App Platform builds all the way to "final" (aspnet runtime, no SDK).
+      target: base
     restart: unless-stopped
     environment:
       # Tell .NET we're in development mode

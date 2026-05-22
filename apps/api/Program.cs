@@ -118,10 +118,14 @@ builder.Services.AddHttpContextAccessor();
 //CORS (Cross-Origin Resourse Sharing)
 //This allows the frontend and the backend to talk to eachother
 builder.Services.AddCors(opts =>
-    opts.AddDefaultPolicy( p =>
-        p.WithOrigins("https://localhost:5173", "https://shpegsu.com")
-            .AllowAnyHeader()
-            .AllowAnyMethod()));
+    opts.AddDefaultPolicy(p =>
+        p.WithOrigins(
+            "http://localhost:5173",       // local Vite dev server
+            "https://staging.shpegsu.com", // staging frontend
+            "https://shpegsu.com"          // production frontend
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
 
 //Creates the Swagger Page
 //Swagger page is like a doc that shows up when running the program
@@ -184,11 +188,14 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok"}));
 // File upload endpoints (presigned URL + metadata registration)
 app.MapFilesEndpoints();
 
-//Auto migrate on startup in development only 
-//Runs any pending EF migrations automatically
-// running it allows it to run "dotnet ef database update" after pulling in new code
-
-if (app.Environment.IsDevelopment())
+// Auto-migrate on startup in Development and Staging.
+//
+// WHY NOT PRODUCTION:
+//   Production has real member data. Running migrations automatically risks data
+//   loss if a migration has a bug. In production, migrations run as a separate
+//   pre-deploy job so we can verify the SQL before it touches live data.
+//   See docs/runbooks/admin-recovery.md and the deployment guide.
+if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

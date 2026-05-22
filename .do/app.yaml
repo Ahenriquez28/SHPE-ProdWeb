@@ -1,0 +1,120 @@
+# DigitalOcean App Platform spec — staging environment.
+#
+# HOW THIS WORKS:
+#   - Push to main → App Platform auto-deploys (deploy_on_push: true)
+#   - The API Dockerfile is built to the "final" stage (aspnet runtime, not SDK)
+#   - EF Core migrations run automatically on startup (Program.cs IsStaging check)
+#   - The database is a DO-managed dev database — created on first deploy
+#   - Secrets are set separately in DO dashboard (App → Settings → App-Level Env Vars)
+#
+# FIRST DEPLOY STEPS (one-time):
+#   1. In DO dashboard: Create App → "From GitHub" → repo: Ahenriquez28/SHPE-ProdWeb
+#      DO auto-reads this file. Review the spec, then click Deploy.
+#   2. Add secrets via App → Settings → App-Level Environment Variables (see list below)
+#   3. In Cloudflare: add CNAME for "staging" pointing to the App Platform default URL
+#
+# SECRETS TO ADD IN DO DASHBOARD (never commit real values):
+#   CLERK_ISSUER                  — from Clerk dashboard → API Keys
+#   BOOTSTRAP_SUPER_ADMIN_EMAIL   — your email for first sign-in
+#   DO_SPACES_KEY                 — Spaces → Settings → Access Keys
+#   DO_SPACES_SECRET              — same
+#   AWS_ACCESS_KEY_ID             — AWS IAM key for SES
+#   AWS_SECRET_ACCESS_KEY         — same
+#   TELNYX_API_KEY                — portal.telnyx.com → API Keys
+
+name: shpe-gsu-staging
+
+# ── API service ───────────────────────────────────────────────────────────────
+services:
+  - name: api
+    github:
+      repo: Ahenriquez28/SHPE-ProdWeb
+      branch: main
+      deploy_on_push: true
+
+    # Build from the Dockerfile in apps/api.
+    # App Platform builds all stages and uses the last one ("final" = aspnet runtime).
+    source_dir: apps/api
+    dockerfile_path: apps/api/Dockerfile
+
+    # Smallest instance: fine for staging, scale up for production.
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8080
+
+    # All /api/* traffic routes to this service.
+    routes:
+      - path: /api
+
+    # DO App Platform pings this every 10s. Three failures = unhealthy = alert.
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 10
+      period_seconds: 10
+      failure_threshold: 3
+
+    envs:
+      # Non-secret config — safe to commit
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Staging
+
+      # Database URL — injected automatically by App Platform from the db component below.
+      # The ${db.DATABASE_URL} syntax is App Platform's reference to the attached database.
+      - key: ConnectionStrings__Postgres
+        value: ${db.DATABASE_URL}
+
+      # Spaces config — non-secret keys safe to commit, credentials added as secrets in UI
+      - key: DO_SPACES_BUCKET
+        value: shpegsu-staging
+      - key: DO_SPACES_REGION
+        value: nyc3
+
+      # SES config
+      - key: AWS_SES_REGION
+        value: us-east-1
+      - key: AWS_SES_FROM_EMAIL
+        value: noreply@shpegsu.com
+
+      # Telnyx
+      - key: TELNYX_PHONE_NUMBER
+        value: "+14706728573"
+
+      # ── Secrets (set in DO dashboard, NOT here) ──────────────────────────
+      # These reference secrets you add via App → Settings → App-Level Env Vars.
+      # Listing them here tells App Platform to expect them — deploy will warn if missing.
+      - key: CLERK_ISSUER
+        type: SECRET
+      - key: BOOTSTRAP_SUPER_ADMIN_EMAIL
+        type: SECRET
+      - key: DO_SPACES_KEY
+        type: SECRET
+      - key: DO_SPACES_SECRET
+        type: SECRET
+      - key: AWS_ACCESS_KEY_ID
+        type: SECRET
+      - key: AWS_SECRET_ACCESS_KEY
+        type: SECRET
+      - key: TELNYX_API_KEY
+        type: SECRET
+
+# ── Database ─────────────────────────────────────────────────────────────────
+# DO creates and manages this Postgres 16 instance.
+# It's destroyed if the app is deleted — staging data is not permanent.
+# For production, use a separate standalone Managed Database instead.
+databases:
+  - name: db
+    engine: PG
+    version: "16"
+    # db-s-dev-database = DO's cheapest managed dev DB (~$7/mo)
+    # Upgrade to db-s-1vcpu-1gb for production.
+    size: db-s-dev-database
+    num_nodes: 1
+    production: false
+
+# ── Custom domain ─────────────────────────────────────────────────────────────
+# After first deploy, DO gives you a default URL (something.ondigitalocean.app).
+# Add a CNAME in Cloudflare: staging.shpegsu.com → that URL.
+# Then DO auto-provisions an SSL cert for staging.shpegsu.com.
+domains:
+  - domain: staging.shpegsu.com
+    type: PRIMARY
