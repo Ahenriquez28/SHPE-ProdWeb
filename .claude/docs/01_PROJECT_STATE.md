@@ -4,12 +4,11 @@
 
 ## Last updated
 
-`2026-05-22` — Built and verified 0.8, 0.9, 0.10 in one session.
+`2026-05-22` — Fixed git (init in project root, pushed to GitHub), built and verified 0.12 CI.
 
 ## Current step
 
-**🟡 0.12 — CI/CD (GitHub Actions)** (next up)
-⚠️ NOTE: Git repo root is at `~/` not `~/Desktop/SHPE-ProdWeb/` — code not committed yet. Must fix git before 0.12.
+**🟡 0.13 — Staging deploy on DigitalOcean** (next up)
 
 ## Phase 0 checklist
 
@@ -24,8 +23,8 @@
 - [x] **0.8** File upload infrastructure — FileRecord, FileService, FilesEndpoints, RequireRoleFilter, migration applied
 - [x] **0.9** Shared error handling — RFC 7807, ProblemDetailsResults.cs, UseStatusCodePages; verified traceId in 404 body
 - [x] **0.10** Rate limiting — 4 policies (default/auth/comms/checkin); verified 429 + Retry-After: 60
-- [ ] **0.12** CI/CD (GitHub Actions) ← **NEXT**
-- [ ] **0.13** Staging deploy on DigitalOcean
+- [x] **0.12** CI/CD — GitHub Actions workflow, restore+build passes green ✅
+- [ ] **0.13** Staging deploy on DigitalOcean ← **NEXT**
 
 ## Phase 0.5 checklist
 
@@ -172,11 +171,13 @@ docs/
 
 Use this section to record decisions made mid-session, debugging context, anything weird that future sessions need to know.
 
-### 2026-05-22
-- Git repository root is at `~/` (home directory), NOT `~/Desktop/SHPE-ProdWeb/`.
-  All code files exist locally but none are committed to the GitHub remote.
-  Need to fix: either `git init` inside SHPE-ProdWeb, or move the git root.
-  Alex needs to confirm approach before we touch git.
+### 2026-05-22 (session 2)
+- Git fixed: `git init` inside SHPE-ProdWeb, remote set to Ahenriquez28/SHPE-ProdWeb, force-pushed.
+- All 55 files committed in one initial commit `ca4d5a1`.
+- `.gitignore` created: excludes bin/, obj/, .env, node_modules/, .claude/settings.local.json.
+- CI workflow added at `.github/workflows/ci.yml` — restore+build only (no test projects yet).
+  First attempt failed with 0 jobs (YAML complexity); simplified to lean restore+build → green ✅.
+- 0.13 (staging deploy) requires DigitalOcean Spaces bucket + App Platform to exist first.
 - Step 0.6 was already coded; verified by adding temp POST endpoint, confirmed row in audit_log, removed temp endpoint.
 - Step 0.7 built: Roles.cs (static constants), PeopleService + IPeopleService (bootstrap logic), registered in Program.cs, runbook at docs/runbooks/admin-recovery.md.
 - `dotnet watch` hot-reloads code changes inside the Docker container without a full restart. Program.cs top-level changes show a warning but apply immediately.
