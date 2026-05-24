@@ -1,4 +1,6 @@
 using Amazon.S3;
+using Amazon.SimpleEmailV2;
+using Amazon;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 
@@ -43,6 +45,25 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
 
 // FileService — presigned upload URLs + file metadata management
 builder.Services.AddScoped<IFileService, FileService>();
+
+// ── AWS SES v2 (email sending) ────────────────────────────────────────────────
+// Separate client from the DO Spaces S3 client — SES is an AWS service (not DO),
+// so it uses normal AWS regional endpoints, not the DO Spaces override.
+// Singleton: AmazonSimpleEmailServiceV2Client is thread-safe.
+builder.Services.AddSingleton<IAmazonSimpleEmailServiceV2>(_ =>
+{
+    var cfg    = builder.Configuration;
+    var key    = cfg["AWS_ACCESS_KEY_ID"]     ?? throw new InvalidOperationException("AWS_ACCESS_KEY_ID is required.");
+    var secret = cfg["AWS_SECRET_ACCESS_KEY"] ?? throw new InvalidOperationException("AWS_SECRET_ACCESS_KEY is required.");
+    var region = cfg["AWS_SES_REGION"]        ?? "us-east-1";
+
+    // RegionEndpoint.GetBySystemName resolves "us-east-1" → RegionEndpoint.USEast1 etc.
+    return new AmazonSimpleEmailServiceV2Client(key, secret, RegionEndpoint.GetBySystemName(region));
+});
+
+// SesEmailService — scoped because it depends on AppDbContext (also scoped).
+// BlastAsync needs to query member emails from the DB.
+builder.Services.AddScoped<ISesEmailService, SesEmailService>();
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 // Four policies for four risk profiles:
@@ -185,8 +206,14 @@ app.UseSwaggerUI();
 //Used by Docker, Digital Ocean, and devs to see if APis are running fine
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok"}));
 
+// Auth endpoints — POST /api/auth/sync (first-login provisioning) + GET /api/me
+app.MapAuthEndpoints();
+
 // File upload endpoints (presigned URL + metadata registration)
 app.MapFilesEndpoints();
+
+// Email endpoints (send, blast, welcome) — all admin-gated, "comms" rate limited
+app.MapEmailEndpoints();
 
 // Auto-migrate on startup in Development and Staging.
 //

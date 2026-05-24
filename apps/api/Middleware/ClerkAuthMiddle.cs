@@ -30,6 +30,11 @@ public class ClerkAuthMiddleware
 
             if (principal != null)
             {
+                // Always expose ClerkUserId when the JWT is valid.
+                // POST /api/auth/sync reads this to link the Clerk account to a Person row
+                // on first sign-in, before an AuthAccount record exists.
+                ctx.Items["ClerkUserId"] = principal.ClerkUserId;
+
                 // Look up the Person in our database via their Clerk user ID
                 var account = await db.AuthAccounts
                     .Where(a => a.Provider == "clerk" &&
@@ -74,4 +79,9 @@ public static class HttpContextExtensions
     // Returns true if the logged-in person has the specified role
     public static bool HasRole(this HttpContext ctx, string role) =>
         ctx.GetRoles().Contains(role);
+
+    // Returns the raw Clerk user ID from the validated JWT.
+    // Set even before an AuthAccount exists — used by POST /api/auth/sync.
+    public static string? GetClerkUserId(this HttpContext ctx) =>
+        ctx.Items["ClerkUserId"] as string;
 }
