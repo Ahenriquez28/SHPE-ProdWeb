@@ -47,7 +47,7 @@ export async function uploadFile(
   getToken: () => Promise<string | null>,
 ): Promise<UploadResult> {
   const token = await getToken();
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
   // Step 1 — get presigned upload URL
   const presignRes = await fetch('/api/files/presigned', {

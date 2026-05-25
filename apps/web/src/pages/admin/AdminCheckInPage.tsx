@@ -178,18 +178,6 @@ export default function AdminCheckInPage() {
     ? (student.firstName[0] + student.lastName[0]).toUpperCase()
     : '?';
 
-  const scanStatusColor =
-    resultState === 'confirmed' || resultState === 'found' ? 'text-green-600' :
-    resultState === 'already_in'                           ? 'text-brand-dark' :
-    resultState === 'loading'                              ? 'text-shpe-blue'  :
-    'text-text-muted';
-
-  const scanStatusText =
-    resultState === 'found'     ? '✓ Identity Confirmed'    :
-    resultState === 'already_in'? '⚠ Already Checked In'   :
-    resultState === 'loading'   ? 'Looking up student...'   :
-    resultState === 'confirmed' ? '✓ Checked In Successfully' :
-    'Awaiting scan…';
 
   return (
     <div>
