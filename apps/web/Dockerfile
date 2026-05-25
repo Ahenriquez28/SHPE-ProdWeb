@@ -10,7 +10,7 @@ WORKDIR /app
 # Copy lockfile + manifest first so Docker caches the install layer.
 # pnpm install only re-runs when these two files change, not on every source edit.
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true
 
 # Copy the rest of the source after deps are cached.
 COPY . .
