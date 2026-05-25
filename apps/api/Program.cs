@@ -153,9 +153,10 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddCors(opts =>
     opts.AddDefaultPolicy(p =>
         p.WithOrigins(
-            "http://localhost:5173",       // local Vite dev server
-            "https://staging.shpegsu.com", // staging frontend
-            "https://shpegsu.com"          // production frontend
+            "http://localhost:5173",        // local Vite dev server
+            "http://167.99.145.129",        // staging server — frontend on port 80
+            "https://staging.shpegsu.com",  // staging custom domain (future)
+            "https://shpegsu.com"           // production frontend
         )
         .AllowAnyHeader()
         .AllowAnyMethod()));

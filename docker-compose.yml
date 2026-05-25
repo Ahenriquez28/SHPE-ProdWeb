@@ -41,6 +41,27 @@ services:
     working_dir: /app
     command: dotnet watch run --no-launch-profile
 
+  # React frontend — built with Vite, served by nginx on port 80.
+  #
+  # WHY BUILD ARGS FOR VITE_*:
+  #   Vite embeds environment variables into the JS bundle at build time.
+  #   They are NOT injectable at runtime the way Docker env vars normally work.
+  #   Changing VITE_API_URL requires a rebuild: docker compose up -d --build web
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        # API URL baked into the frontend bundle — points at the staging API.
+        VITE_API_URL: http://167.99.145.129:5001
+        # Clerk publishable key — safe to commit, it's a public key by design.
+        VITE_CLERK_PUBLISHABLE_KEY: pk_test_dW5pZmllZC1waG9lbml4LTU0LmNsZXJrLmFjY291bnRzLmRldiQ
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
 volumes:
   # Named volume so Postgres data survives container restarts
   postgres_data:
