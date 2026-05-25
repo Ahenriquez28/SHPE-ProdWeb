@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="AWSSDK.S3" Version="4.0.23.3" />
+    <PackageReference Include="AWSSDK.SimpleEmailV2" Version="4.0.13" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />

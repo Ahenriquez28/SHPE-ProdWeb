@@ -10,6 +10,8 @@ obj/
 .env
 .env.local
 .env.*.local
+# appsettings.Development.json holds real local credentials — never commit
+apps/api/appsettings.Development.json
 
 # ── Node / frontend ──────────────────────────────────────
 node_modules/

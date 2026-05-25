@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — official SHPE brand palette.
+ *
+ * Source: SHPE Brand Guidelines
+ *   Deep navy  #001F5B — primary surfaces, sidebar, headings
+ *   SHPE blue  #0070C0 — active states, links, highlights (dominant blue)
+ *   Light blue #72A9BE — muted accents, secondary info
+ *   Orange     #FD652F — CTAs, badges, primary brand accent
+ *   Dark red   #D33A02 — hover on orange, destructive, deep accent
+ *
+ * Rule: blue dominates surfaces; orange/red are reserved for action + accent.
+ */
+@theme {
+  /* SHPE Orange — accent / CTA */
+  --color-brand:        #FD652F;
+  --color-brand-dark:   #D33A02;
+  --color-brand-light:  #ff9066;
+
+  /* SHPE Blue family — primary / dominant */
+  --color-navy:         #001F5B;   /* SHPE deep navy */
+  --color-navy-dark:    #001040;   /* footer, deepest bg */
+  --color-navy-light:   #0070C0;   /* SHPE bright blue — active, links */
+  --color-navy-muted:   #72A9BE;   /* SHPE light blue — muted accents */
+
+  /* Convenience aliases matching brand names */
+  --color-shpe-blue:       #0070C0;
+  --color-shpe-blue-light: #72A9BE;
+
+  /* Page background — neutral, complements both blue + orange */
+  --color-cream:        #f4f6f9;
+  --color-cream-dark:   #e6eaf1;
+
+  /* Elevated surfaces */
+  --color-surface:      #ffffff;
+  --color-border:       #d0d8e8;
+  --color-text:         #0f172a;
+  --color-text-muted:   #64748b;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-cream);
+  color: var(--color-text);
+  margin: 0;
+}

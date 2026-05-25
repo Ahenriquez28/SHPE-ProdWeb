@@ -21,30 +21,42 @@ builder.Services.AddSingleton<IClerkJwtVerifier, ClerkJwtVerifier>();
 // Scoped: one instance per HTTP request, sharing the request's DbContext.
 builder.Services.AddScoped<IPeopleService, PeopleService>();
 
-// ── DigitalOcean Spaces (S3-compatible file storage) ─────────────────────────
-// We configure the AWS S3 client to hit DO Spaces instead of AWS by overriding ServiceURL.
-// Spaces implements the S3 API, so everything (presigned URLs, uploads, deletes) works identically.
-// Singleton: the client is thread-safe and expensive to construct — one instance for the app lifetime.
+// ── Cloudflare R2 (S3-compatible file storage) ───────────────────────────────
+// R2 implements the S3 API, so the AWS SDK works as-is — just point ServiceURL at the R2 endpoint.
+//
+// WHY ForcePathStyle = true:
+//   The default SDK behavior is virtual-hosted style: https://{bucket}.{host}/{key}
+//   R2's endpoint URL doesn't support bucket-in-subdomain — the bucket is always in the path.
+//   ForcePathStyle = true gives us: https://{host}/{bucket}/{key} which R2 expects.
+//
+// Singleton: AmazonS3Client is thread-safe and expensive to construct.
 builder.Services.AddSingleton<IAmazonS3>(_ =>
 {
     var cfg = builder.Configuration;
-    var region = cfg["DO_SPACES_REGION"] ?? "nyc3";
     var s3Config = new AmazonS3Config
     {
-        // DO Spaces endpoint: https://<region>.digitaloceanspaces.com
-        ServiceURL   = $"https://{region}.digitaloceanspaces.com",
-        // Path-style is needed for non-AWS S3 providers.
-        // Without it, the SDK prepends the bucket name as a subdomain which DO Spaces doesn't support.
+        // R2 endpoint format: https://{account_id}.r2.cloudflarestorage.com
+        ServiceURL     = cfg["R2_ENDPOINT"]
+            ?? throw new InvalidOperationException("R2_ENDPOINT is not configured."),
         ForcePathStyle = true,
     };
     return new AmazonS3Client(
-        cfg["DO_SPACES_KEY"]    ?? "placeholder",
-        cfg["DO_SPACES_SECRET"] ?? "placeholder",
+        cfg["R2_ACCESS_KEY_ID"]
+            ?? throw new InvalidOperationException("R2_ACCESS_KEY_ID is not configured."),
+        cfg["R2_SECRET_ACCESS_KEY"]
+            ?? throw new InvalidOperationException("R2_SECRET_ACCESS_KEY is not configured."),
         s3Config);
 });
 
-// FileService — presigned upload URLs + file metadata management
+// FileService — base R2 operations: presigned PUT/GET URLs, file registration, soft-delete
 builder.Services.AddScoped<IFileService, FileService>();
+
+// Purpose-specific file services — each owns one R2 folder and enforces its own rules.
+// EventDocService is fully implemented. EventFlyerService and MeetingDocService are stubs.
+builder.Services.AddScoped<IEventDocService, EventDocService>();
+// TODO (future dev): uncomment these once the stubs are implemented:
+// builder.Services.AddScoped<IEventFlyerService, EventFlyerService>();
+// builder.Services.AddScoped<IMeetingDocService, MeetingDocService>();
 
 // ── AWS SES v2 (email sending) ────────────────────────────────────────────────
 // Separate client from the DO Spaces S3 client — SES is an AWS service (not DO),
@@ -209,8 +221,14 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok"}));
 // Auth endpoints — POST /api/auth/sync (first-login provisioning) + GET /api/me
 app.MapAuthEndpoints();
 
-// File upload endpoints (presigned URL + metadata registration)
+// Generic file endpoints (presigned URL + metadata registration)
 app.MapFilesEndpoints();
+
+// EventDoc endpoints — fully implemented (EventDocs/ folder, admin upload, member read)
+app.MapEventDocEndpoints();
+// TODO (future dev): uncomment once stub services are implemented:
+// app.MapEventFlyerEndpoints();
+// app.MapMeetingDocEndpoints();
 
 // Email endpoints (send, blast, welcome) — all admin-gated, "comms" rate limited
 app.MapEmailEndpoints();
